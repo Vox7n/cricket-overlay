@@ -2,104 +2,138 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Cricket Live Overlay</title>
+<title>Cricket Overlay</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap" rel="stylesheet">
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap" rel="stylesheet">
 
 <style>
-html, body {
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  font-family: 'Poppins', sans-serif;
+:root{
+  --d1:#005461;
+  --d2:#018790;
+  --d3:#00B7B5;
 }
 
-.overlay {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 1800px;
-  height: 90px;
-  background: linear-gradient(90deg, #081a33, #0e2f5f);
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  padding: 0 24px;
-  color: white;
-  box-shadow: 0 8px 30px rgba(0,0,0,.6);
+*{
+  box-sizing:border-box;
 }
 
-.team { flex: 1.4; }
-.team-name { font-size: 22px; font-weight: 700; }
-.players { font-size: 14px; opacity: .9; }
+body{
+  margin:0;
+  background:transparent;
+  font-family:'Inter',sans-serif;
+}
 
-.score { flex: 1; text-align: center; }
-.score-main { font-size: 32px; font-weight: 700; }
-.overs { font-size: 14px; opacity: .85; }
+/* OVERLAY BAR */
+#overlay{
+  position:fixed;
+  bottom:40px;
+  left:50%;
+  transform:translateX(-50%);
+  width:1600px;
+  height:110px;
 
-.bowler { flex: 1; text-align: right; font-size: 14px; }
-.bowler span { font-weight: 700; }
+  background:linear-gradient(
+    90deg,
+    rgba(0,84,97,0.95),
+    rgba(1,135,144,0.95)
+  );
+
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  padding:0 40px;
+  color:#fff;
+  box-shadow:0 10px 30px rgba(0,0,0,0.35);
+}
+
+/* LEFT */
+#team{
+  font-size:28px;
+  font-weight:700;
+  letter-spacing:0.5px;
+}
+
+/* CENTER */
+#scoreBox{
+  margin-left:60px;
+  display:flex;
+  flex-direction:column;
+}
+#score{
+  font-size:42px;
+  font-weight:700;
+  line-height:1;
+}
+#overs{
+  font-size:18px;
+  opacity:0.85;
+}
+
+/* RIGHT */
+#liveBox{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:18px;
+  font-weight:600;
+}
+#dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:#ff3b3b;
+  animation:pulse 1.2s infinite;
+}
+
+@keyframes pulse{
+  0%{opacity:1}
+  50%{opacity:0.3}
+  100%{opacity:1}
+}
 </style>
 </head>
 
 <body>
 
-<div class="overlay">
-  <div class="team">
-    <div class="team-name" id="team">Batting Team</div>
-    <div class="players">
-      <span id="batsman1">Player 1</span> •
-      <span id="batsman2">Player 2</span>
-    </div>
+<div id="overlay">
+  <div id="team">LIVE CRICKET</div>
+
+  <div id="scoreBox">
+    <div id="score">0/0</div>
+    <div id="overs">0.0 overs</div>
   </div>
 
-  <div class="score">
-    <div class="score-main">
-      <span id="runs">0</span>/<span id="wickets">0</span>
-    </div>
-    <div class="overs">
-      <span id="overs">0.0</span> overs
-    </div>
-  </div>
-
-  <div class="bowler">
-    Bowler<br>
-    <span id="bowler">Bowler Name</span>
+  <div id="liveBox">
+    <div id="dot"></div>
+    LIVE
   </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
 <script>
-var firebaseConfig = {
-  apiKey: "AIzaSyDJvoekrngkHQbBZCkXsvlaXqWGuBTrqbU",
-  authDomain: "cricket-overlay-2faea.firebaseapp.com",
-  databaseURL: "https://cricket-overlay-2faea-default-rtdb.firebaseio.com",
-  projectId: "cricket-overlay-2faea",
-  storageBucket: "cricket-overlay-2faea.appspot.com",
-  messagingSenderId: "58050640972",
-  appId: "1:58050640972:web:f6140016deaccf756808e9"
-};
+/* FIREBASE INIT – SAME PROJECT */
+firebase.initializeApp({
+  apiKey:"AIzaSyDJvoekrngkHQbBZCkXsvlaXqWGuBTrqbU",
+  databaseURL:"https://cricket-overlay-2faea-default-rtdb.firebaseio.com"
+});
 
-firebase.initializeApp(firebaseConfig);
-var db = firebase.database();
+const match = firebase.database().ref("match");
 
-db.ref("match").on("value", snap => {
-  if (!snap.exists()) return;
-  const d = snap.val();
+/* LIVE SCORE LISTENER */
+match.on("value",snap=>{
+  const d = snap.val() || {};
 
-  document.getElementById("runs").innerText = d.runs || 0;
-  document.getElementById("wickets").innerText = d.wickets || 0;
-  document.getElementById("overs").innerText =
-    (d.overs || 0) + "." + (d.balls || 0) + " overs";
+  const runs = d.runs ?? 0;
+  const wkts = d.wickets ?? 0;
+  const overs = (d.overs ?? 0) + "." + (d.balls ?? 0);
 
-  document.getElementById("team").innerText = d.team || "Batting Team";
-  document.getElementById("batsman1").innerText = d.player1 || "Player 1";
-  document.getElementById("batsman2").innerText = d.player2 || "Player 2";
-  document.getElementById("bowler").innerText = d.bowler || "Bowler";
+  document.getElementById("score").innerText = `${runs}/${wkts}`;
+  document.getElementById("overs").innerText = `${overs} overs`;
 });
 </script>
 
